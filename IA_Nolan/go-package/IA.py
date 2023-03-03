@@ -1,0 +1,94 @@
+# -*- coding: utf-8 -*-
+''' This is the file you have to modify for the tournament. Your default AI player must be called by this module, in the
+myPlayer class.
+
+Right now, this class contains the copy of the randomPlayer. But you have to change this!
+'''
+
+import time
+import Goban 
+import random 
+from playerInterface import *
+from model2 import Linear_QNet, QTrainer
+import torch
+import numpy as np 
+class myPlayer(PlayerInterface):
+    ''' Example of a random player for the go. The only tricky part is to be able to handle
+    the internal representation of moves given by legal_moves() and used by push() and 
+    to translate them to the GO-move strings "A1", ..., "J8", "PASS". Easy!
+
+    '''
+
+    def __init__(self):
+        self._board = Goban.Board()
+        self._mycolor = None
+        self.model = Linear_QNet(81,810,810,100)
+        self.model.load_state_dict(torch.load("./model/model1.pth"))
+        self.model.eval()
+
+    def get_action(self, state):
+        state0 = torch.tensor(state, dtype=torch.float)
+        prediction = self.model(state0)
+        move = torch.argmax(prediction).item()
+        final_move = move
+        
+        return final_move
+
+    def getPlayerName(self):
+        return "AgnèsAI"
+
+    def getPlayerMove(self):
+        if self._board.is_game_over():
+            print("Referee told me to play but the game is over!")
+            return "PASS" 
+        move_list = []
+        for i in self._board.generate_legal_moves():
+            move = i
+            self._board.push(move) # Here I have to internally flatten the move to be able to check it.
+            if self._mycolor==1:
+                state_old = np.array(self._board.get_board(), dtype=int)
+            else:
+                bo2 = self._board.get_board()
+                for i in bo2:
+                    if i == 1:
+                        i=2
+                    elif i == 2:
+                        i=1
+                state_old = np.array(bo2, dtype=int)
+            move_list += [[move,self.get_action(state_old)]]
+            self._board.pop()
+        max = move_list[0][1]
+        moves = [move_list[0][0]]
+        for i in range(1,len(move_list)):
+            if max < move_list[i][1]:
+                max = move_list[i][1]
+                moves = [move_list[i][0]]
+            elif max == move_list[i][1]:
+                moves += [move_list[i][0]]
+        move = moves[random.randint(0, len(moves)-1)]
+        self._board.push(move)
+        # New here: allows to consider internal representations of moves
+        print("I am playing ", self._board.move_to_str(move))
+        print("My current board :")
+        self._board.prettyPrint()
+        # move is an internal representation. To communicate with the interface I need to change if to a string
+        return Goban.Board.flat_to_name(move) 
+
+
+    def playOpponentMove(self, move):
+        print("Opponent played ", move) # New here
+        # the board needs an internal represetation to push the move.  Not a string
+        self._board.push(Goban.Board.name_to_flat(move)) 
+
+    def newGame(self, color):
+        self._mycolor = color
+        self._opponent = Goban.Board.flip(color)
+
+    def endGame(self, winner):
+        if self._mycolor == winner:
+            print("I won!!!")
+        else:
+            print("I lost :(!!")
+
+
+
