@@ -1,12 +1,12 @@
 import Goban 
-import myPlayer,IA
+import myPlayer,IA,gnugoPlayer
 from io import StringIO
 import sys
 import torch
 import random
 import numpy as np
 from collections import deque,namedtuple
-from model import Linear_QNet, QTrainer
+from model2 import Linear_QNet, QTrainer
 from helper import plot
 import time
 import pygame
@@ -26,7 +26,7 @@ BACKGROUND= (200,200,200)
 RED =(255,0,0)
 
 BLOCK_SIZE = 100
-SPEED = 0.0000001
+SPEED = 0.00000001
 
 
 class GobbanGameAI:
@@ -42,7 +42,7 @@ class GobbanGameAI:
 
 MAX_MEMORY = 100000000
 BATCH_SIZE = 100000000
-LR = 0.001
+LR = 0.01
 
 class Agent:
 
@@ -51,9 +51,9 @@ class Agent:
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
-        self.model = Linear_QNet(81,810,810,810,810,100)
-        self.model.load_state_dict(torch.load("./model/model3.pth"))
-        self.model.eval()
+        self.model = Linear_QNet(81,256,256,100)
+        #self.model.load_state_dict(torch.load("./model/model5.pth"))
+        #self.model.eval()
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
 
@@ -80,7 +80,7 @@ class Agent:
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = (0 - self.n_games)
+        self.epsilon = 0
         if random.randint(0, 200) < self.epsilon:
             final_move = random.randint(0, 100)      
                
@@ -91,6 +91,62 @@ class Agent:
             final_move = move
        
         return final_move
+
+
+def MaxValue(board, a, b, limit, color, agent) : # Évaluation Ami
+    if limit == 0 or board.is_game_over():
+        if color==1:
+            bo2 = board.get_board()
+            for i in bo2:
+                if i == 1:
+                    i=2
+                elif i == 2:
+                    i=1
+            state = np.array(bo2, dtype=int)
+        else:
+            state = np.array(board.get_board(), dtype=int)
+        return agent.get_action(state)
+    for o in board.legal_moves() :
+        board.push(o)
+        a = max(a,MinValue(board, a, b, limit-1, color, agent))
+        board.pop()
+        if a >= b : return b
+    return a
+
+def MinValue(board, a, b, limit, color, agent) : # Évaluation Ennemi
+    if limit == 0 or board.is_game_over():
+        if color==1:
+            bo2 = board.get_board()
+            for i in bo2:
+                if i == 1:
+                    i=2
+                elif i == 2:
+                    i=1
+            state = np.array(bo2, dtype=int)
+        else:
+            state = np.array(board.get_board(), dtype=int)
+        return agent.get_action(state)
+    for n in board.legal_moves() :
+        board.push(n)
+        b = min(b,MaxValue(board, a, b, limit-1, color, agent))
+        board.pop()
+        if a >= b : return a
+    return b
+
+def AmiAlphaBeta(board, limit, color, agent) :
+    a = -inf
+    b = +inf
+    best = -inf
+    legalMoves = board.legal_moves() 
+    bestMove = legalMoves[0]
+    for m in legalMoves :
+        board.push(m)
+        a = max(best,MinValue(board, a, b, limit-1, color, agent))
+        board.pop()
+        if a > best :
+            bestMove = m
+            best = a
+    return bestMove
 
 def go_score(b):
     res=[0,0]
@@ -104,6 +160,7 @@ def train(nb):
     win = [0]
     plot_scores = []
     plot_mean_scores = []
+    plot_reward = []
     total_score = 0
     record = 0
     agent = Agent()
@@ -112,12 +169,12 @@ def train(nb):
         b = Goban.Board()
 
         players = []
-        player1 = myPlayer.myPlayer()
-        player1.newGame(Goban.Board._BLACK)
+        player1 = gnugoPlayer.myPlayer()
+        player1.newGame(Goban.Board._WHITE)
         players.append(player1)
 
-        player2 = myPlayer.myPlayer()
-        player2.newGame(Goban.Board._WHITE)
+        player2 = gnugoPlayer.myPlayer()
+        player2.newGame(Goban.Board._BLACK)
         players.append(player2)
 
         nextplayer = 0
@@ -133,8 +190,10 @@ def train(nb):
         e2score=0
         a1score=0
         a2score=0
-
+        times = 0
+        plot_reward+=[0]
         while not b.is_game_over():
+            
             #print("Referee Board:")
             #b.prettyPrint() 
             #print("Before move", nbmoves)
@@ -145,7 +204,7 @@ def train(nb):
             othercolor = Goban.Board.flip(nextplayercolor)
             sys.stdout = stringio
 
-            if nextplayer == nb:
+            if nextplayer != nb:
                 lscore = go_score(b)
                 e1score = lscore[(nb+1)%2]-lscore[nb]
 
@@ -164,55 +223,47 @@ def train(nb):
                     break
                 b.push(Goban.Board.name_to_flat(move)) # Here I have to internally flatten the move to be able to check it.
             
-
                 lscore = go_score(b)
                 e2score = lscore[(nb+1)%2]-lscore[nb]
 
                 nextplayer = otherplayer
                 nextplayercolor = othercolor
             else:   
-                done = True
-                move_list = []
-                for i in legals:
-                    move = i
-                    b.push(move) # Here I have to internally flatten the move to be able to check it.
-                    if nb==0:
-                        state_old = np.array(b.get_board(), dtype=int)
-                    else:
-                        bo2 = b.get_board()
-                        for i in bo2:
-                            if i == 1:
-                                i=2
-                            elif i == 2:
-                                i=1
-                        state_old = np.array(bo2, dtype=int)
-                    move_list += [[move,agent.get_action(state_old)]]
-                    b.pop()
-                max = move_list[0][1]
-                moves = [move_list[0][0]]
-                for i in range(1,len(move_list)):
-                    if max < move_list[i][1]:
-                        max = move_list[i][1]
-                        moves = [move_list[i][0]]
-                    elif max == move_list[i][1]:
-                        moves += [move_list[i][0]]
-                move = moves[random.randint(0, len(moves)-1)]
+                done = False
+                if nb==1:
+                    bo2 = b.get_board()
+                    for i in bo2:
+                        if i == 1:
+                            i=2
+                        elif i == 2:
+                            i=1
+                    state_old = np.array(bo2, dtype=int)
+                else:
+                    state_old = np.array(b.get_board(), dtype=int)
+                move = AmiAlphaBeta(b, 2, nextplayer, agent)
                 
                 lscore = go_score(b)
-                a1score = lscore[(nb+1)%2]-lscore[nb]
+                a1score = lscore[nb]-lscore[(nb+1)%2]
 
                 b.push(move) # Here I have to internally flatten the move to be able to check it.
                 players[otherplayer].playOpponentMove(Goban.Board.flat_to_name(move))
                 lscore = go_score(b)
-                a2score = lscore[(nb+1)%2]-lscore[nb]
+                a2score = lscore[nb]-lscore[(nb+1)%2]
                 
                 nextplayer = otherplayer
                 nextplayercolor = othercolor
-                reward = 10*(abs(a2score-a1score)-abs(e2score-e1score))
-
-
+                if(a1score != 0 or e1score != 0):
+                    reward = (abs(a2score-a1score)-abs(e2score-e1score))
+                    if reward > 0:
+                        times += 10
+                        reward = times + (reward)
+                    else:
+                        times = 0
+                        reward = reward - 1
+                else:
+                    reward = 0
                 state_new = np.array(b.get_board(), dtype=int)
-
+                plot_reward[-1]+=reward
                 # train short memory
                 agent.train_short_memory(state_old, move, reward, state_new, done)
 
@@ -224,18 +275,18 @@ def train(nb):
                 nextplayer = otherplayer
                 nextplayercolor = othercolor
             
-            #screen.display.fill(BACKGROUND)
-            #bo = b.get_board()
-            #"for n in range(len(bo)):
-            #    if bo[n] == 1:
-            #""        pygame.draw.rect(screen.display, WHITE, pygame.Rect(100*(n//9), 100*(n%9), BLOCK_SIZE, BLOCK_SIZE))
-            #    if bo[n] == 2:
-            #        pygame.draw.rect(screen.display, BLACK, pygame.Rect(100*(n//9),100*(n%9), BLOCK_SIZE, BLOCK_SIZE))
-            #lscore = go_score(b)
-            #text = font.render("Score: " + str(lscore[(nb+1)%2]-lscore[nb]), True, RED)
-            #screen.display.blit(text, [0, 0])
-            #pygame.display.flip()
-            #time.sleep(SPEED)
+            screen.display.fill(BACKGROUND)
+            bo = b.get_board()
+            for n in range(len(bo)):
+                if bo[n] == 1:
+                    pygame.draw.rect(screen.display, WHITE, pygame.Rect(100*(n//9), 100*(n%9), BLOCK_SIZE, BLOCK_SIZE))
+                if bo[n] == 2:
+                    pygame.draw.rect(screen.display, BLACK, pygame.Rect(100*(n//9),100*(n%9), BLOCK_SIZE, BLOCK_SIZE))
+            lscore = go_score(b)
+            text = font.render("Score: " + str(lscore[nb]-lscore[(nb+1)%2]), True, RED)
+            screen.display.blit(text, [0, 0])
+            pygame.display.flip()
+            time.sleep(SPEED)
 
         #print("The game is over")
         #b.prettyPrint()
@@ -244,16 +295,15 @@ def train(nb):
         agent.train_long_memory()
 
         lscore = go_score(b)
-        score = lscore[(nb+1)%2]-lscore[nb]
+        score = lscore[nb]-lscore[(nb+1)%2]
         if score > 0:
             win+=[(win[-1]/100*(len(win)-1)+1)*100/len(win)]
         else:
             win+=[(win[-1]/100*(len(win)-1))*100/len(win)]
         if score > record:
             record = score
-        if (len(plot_scores)!=0 and len(plot_scores)%25==0):
+        if (len(plot_scores)!=0 and len(plot_scores)%10==0):
             agent.model.save()
-            break
 
         print('Game', agent.n_games, 'Score', score, 'Record:', record)
 
@@ -261,7 +311,7 @@ def train(nb):
         total_score += score
         mean_score = total_score / agent.n_games
         plot_mean_scores.append(mean_score)
-        plot(plot_scores, plot_mean_scores, win)
+        plot(plot_scores, plot_mean_scores, win, plot_reward)
 
 
 
