@@ -1,8 +1,10 @@
-import subprocess, sys
+import subprocess
+import sys
 
 ''' Connection with the Go Text Protocol of GNU Go.
 You have to have gnugo installed, and in your exec path.'''
 import random
+
 
 class GnuGo():
 
@@ -42,7 +44,7 @@ class GnuGo():
         return ret[0][2:]
 
     class Moves():
-        
+
         def __init__(self, gnugo):
             self._nextplayer = "black"
             self._gnugo = gnugo
@@ -57,13 +59,15 @@ class GnuGo():
             return self._nextplayer
 
         def getbest(self):
-            status, toret = self._gnugo.query("reg_genmove " + self._nextplayer)
+            status, toret = self._gnugo.query(
+                "reg_genmove " + self._nextplayer)
             if status == "OK":
                 return toret.strip()
             return "ERR"
 
         def get_randomized_best(self):
-            status, toret = self._gnugo.query("experimental_score " + self._nextplayer)
+            status, toret = self._gnugo.query(
+                "experimental_score " + self._nextplayer)
             if status != "OK":
                 return "ERR"
             status, toret = self._gnugo.query("top_moves " + self._nextplayer)
@@ -83,12 +87,12 @@ class GnuGo():
                 scoremoves.append(s)
                 cumul += s
                 cumulatedscore.append(cumul)
-            r = random.uniform(0,cumul)
+            r = random.uniform(0, cumul)
             i = 0
             while i < len(moves) and r > cumulatedscore[i]:
                 i += 1
             if i >= len(moves):
-                i = len(moves) -1
+                i = len(moves) - 1
             return moves[i]
 
         def get_history(self):
@@ -99,8 +103,9 @@ class GnuGo():
             return toread
 
         def playthis(self, move):
-            status, toret = self._gnugo.query("play " + self._nextplayer + " " + str(move))
-            #print(status, toret)
+            status, toret = self._gnugo.query(
+                "play " + self._nextplayer + " " + str(move))
+            # print(status, toret)
             self.flip()
             return status
 
@@ -110,29 +115,28 @@ class GnuGo():
         def __next__(self):
             status, toret = self._gnugo.query("genmove " + self._nextplayer)
             self.flip()
-            if status=="OK":
+            if status == "OK":
                 return toret.strip()
             return "ERR"
 
-    def __init__(self, size):
-        self._proc = subprocess.Popen(['gnugo', '--capture-all-dead', '--chinese-rules', '--boardsize',str(size), '--mode', 'gtp', '--never-resign', '--seed', '0'], bufsize = 1, stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE, universal_newlines=True)
+    def __init__(self, size, level=10):
+        self._proc = subprocess.Popen(['gnugo', '--capture-all-dead', '--chinese-rules', '--boardsize', str(size), '--mode', 'gtp', '--never-resign', '--seed', '0'], bufsize=1, stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE, universal_newlines=True)
         self._stdin = self._proc.stdin
         self._stdout = self._proc.stdout
         self._size = size
         self._nextplayer = "black"
-        (ok, _) = self.query("level 0")
-        assert ok=='OK'
+        (ok, _) = self.query(f"level {level}")
+        assert ok == 'OK'
         (ok, _) = self.query("boardsize "+str(size))
-        assert ok=='OK'
+        assert ok == 'OK'
         (ok, _) = self.query("clear_board")
-        assert ok=='OK'
+        assert ok == 'OK'
         (ok, name) = self.query("name")
-        assert ok=='OK'
+        assert ok == 'OK'
         (ok, version) = self.query("version")
-        assert ok=='OK'
-        #print("Connection to", name.strip(), "(" + version.strip() + ")","Ok")
+        assert ok == 'OK'
+        # print("Connection to", name.strip(), "(" + version.strip() + ")","Ok")
         (ok, legal) = self.query("all_legal black")
-        assert ok=='OK'
-        #print("Legal moves: ", legal)
-        
+        assert ok == 'OK'
+        # print("Legal moves: ", legal)
