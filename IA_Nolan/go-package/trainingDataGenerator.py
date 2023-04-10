@@ -26,9 +26,34 @@ def import_training_data(name):
     return data
 
 
-def generate_training_data(player1, player2):
+def run_round(game, b, players, nextplayer, nextplayercolor, training_board=False, training_move=''):
+    # legal moves are given as internal (flat) coordinates, not A1, A2, ...
+    legals = b.legal_moves()
+    # I have to use this wrapper if I want to print them
+    otherplayer = (nextplayer + 1) % 2
+    othercolor = Goban.Board.flip(nextplayercolor)
+
+    # The move must be given by "A1", ... "J8" string coordinates (not as an internal move)
+    assert (not training_board or training_move != 0)
+    if len(training_move) != 0:
+        move = players[nextplayer].getPlayerMove(my_move=training_move)
+    else:
+        move = players[nextplayer].getPlayerMove(alea=True)
+
+    b.push(Goban.Board.name_to_flat(move))
+    if training_board:
+        game["list_of_moves"].append(move)
+        if (nextplayercolor == Goban.Board._BLACK):
+            game["black_stones"].append(move)
+        else:
+            game["white_stones"].append(move)
+    players[otherplayer].playOpponentMove(move)
+    return game, otherplayer, othercolor
+
+
+def initiate_training_data():
     game = {
-        "depth": int(random.choice(range(1, 50))),
+        "depth": int(random.choice(range(1, 10))),
         "list_of_moves": [],
         "black_stones": [],
         "white_stones": [],
@@ -38,79 +63,78 @@ def generate_training_data(player1, player2):
         "white_wins": 0,
         "white_points": 0,
     }
-    training_board = Goban.Board()
+    board = Goban.Board()
 
     players = []
+    player1 = gnugoPlayer.myPlayer(0)
     player1.newGame(Goban.Board._BLACK)
     players.append(player1)
 
+    player2 = gnugoPlayer.myPlayer(0)
     player2.newGame(Goban.Board._WHITE)
     players.append(player2)
 
-    training_nextplayer = 0
-    training_nextplayercolor = Goban.Board._BLACK
-
-    def run_game(b, nextplayer, nextplayercolor, training_board=False, training_move=''):
-        # legal moves are given as internal (flat) coordinates, not A1, A2, ...
-        legals = b.legal_moves()
-        # I have to use this wrapper if I want to print them
-        otherplayer = (nextplayer + 1) % 2
-        othercolor = Goban.Board.flip(nextplayercolor)
-
-        # The move must be given by "A1", ... "J8" string coordinates (not as an internal move)
-        assert (not training_board or training_move != 0)
-        if len(training_move) != 0:
-            move = players[nextplayer].getPlayerMove(my_move=training_move)
-        else:
-            move = players[nextplayer].getPlayerMove(alea=True)
-        assert Goban.Board.name_to_flat(
-            move) in legals, f'Illegal moves from {nextplayer}'
-
-        b.push(Goban.Board.name_to_flat(move))
-        if training_board:
-            game["list_of_moves"].append(move)
-            if (nextplayercolor == Goban.Board._BLACK):
-                game["black_stones"].append(move)
-            else:
-                game["white_stones"].append(move)
-        players[otherplayer].playOpponentMove(move)
-        return otherplayer, othercolor
+    nextplayer = 0
+    nextplayercolor = Goban.Board._BLACK
 
     nb_moves = game["depth"]
-    while not training_board.is_game_over() and nb_moves != 0:
-        training_nextplayer, training_nextplayercolor = run_game(
-            training_board, training_nextplayer, training_nextplayercolor, True)
+    while not board.is_game_over() and nb_moves != 0:
+        game, nextplayer, nextplayercolor = run_round(
+            game, board, players, nextplayer, nextplayercolor, True)
         nb_moves -= 1
+    game["depth"] -= nb_moves
+    return game
 
-    for i in range(100):
-        b = Goban.Board()
-        players[0].newGame(Goban.Board._BLACK)
-        players[1].newGame(Goban.Board._WHITE)
-        b_nextplayer = training_nextplayer
-        b_nextplayercolor = training_nextplayercolor
-        for move in game["list_of_moves"]:
-            run_game(b, b_nextplayer, b_nextplayercolor, False, move)
 
-        while not b.is_game_over():
-            b_nextplayer, b_nextplayercolor = run_game(
-                b, b_nextplayer, b_nextplayercolor, training_board=False)
-        if b.result() == "1-0":
-            game["white_wins"] += 1
-        elif b.result() == "0-1":
-            game["black_wins"] += 1
-        game["black_points"] += b.compute_score()[0]
-        game["white_points"] += b.compute_score()[1]
-        game["rollouts"] += 1
+def rollout_game(game):
+    board = Goban.Board()
+
+    players = []
+    player1 = gnugoPlayer.myPlayer(0)
+    player1.newGame(Goban.Board._BLACK)
+    players.append(player1)
+
+    player2 = gnugoPlayer.myPlayer(0)
+    player2.newGame(Goban.Board._WHITE)
+    players.append(player2)
+
+    nextplayer = 0
+    nextplayercolor = Goban.Board._BLACK
+
+    for move in game["list_of_moves"]:
+        game, nextplayer, nextplayercolor = run_round(
+            game, board, players, nextplayer, nextplayercolor, training_move=move)
+    depth = 0
+    while not board.is_game_over():
+        depth += 1
+        game, nextplayer, nextplayercolor = run_round(
+            game, board, players, nextplayer, nextplayercolor)
+    if board.result() == "1-0":
+        game["white_wins"] += 1
+    elif board.result() == "0-1":
+        game["black_wins"] += 1
+    elif board.result() == "1/2-1/2":
+        game["black_wins"] += 0.5
+        game["white_wins"] += 0.5
+    game["black_points"] += board.compute_score()[0]
+    game["white_points"] += board.compute_score()[1]
+    game["rollouts"] += 1
+    return game
+
+
+def generate_training_data(game, rollout=100):
+    for i in range(rollout):
+        game = rollout_game(game)
     return game
 
 
 if __name__ == "__main__":
     len_data = 100
+    games = [initiate_training_data() for i in range(100)]
     name = "gnugo10-VS-gnugo10"
     print(f"Generating {name} data... \t0/{len_data}", end="\r")
-    for i in range(len_data):
-        data = generate_training_data(
-            gnugoPlayer.myPlayer(0), gnugoPlayer.myPlayer(0))
+    for i in range(len(games)):
+        games[i] = generate_training_data(games[i], 100)
         print(f"Generating {name} data... \t{i+1}/{len_data}", end="\r")
-        export_training_data(name, data)
+        export_training_data(name, games[i])
     print(f"Full training data {name} available in {path}/{name}.json")

@@ -35,7 +35,6 @@ class myPlayer(PlayerInterface):
             move = self._moves.get_randomized_best()
         elif my_move != '':
             move = my_move
-            self._moves.playthis(my_move)
         else:
             move = self._moves.getbest()
         # New here: allows to consider internal representations of

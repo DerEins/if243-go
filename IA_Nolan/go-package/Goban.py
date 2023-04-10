@@ -27,13 +27,15 @@
 
     '''
 
-from __future__ import print_function # Used to help cython work well
+from __future__ import print_function  # Used to help cython work well
 import numpy as np
 import random
 
+
 def getProperRandom():
     ''' Gets a proper 64 bits random number (ints in Python are not the ideal toy to play with int64)'''
-    return np.random.randint(np.iinfo(np.int64).max, dtype='int64') 
+    return np.random.randint(np.iinfo(np.int64).max, dtype='int64')
+
 
 class Board:
     ''' GO Board class to implement your (simple) GO player.'''
@@ -42,8 +44,8 @@ class Board:
     _BLACK = 1
     _WHITE = 2
     _EMPTY = 0
-    _BOARDSIZE = 9 # Used in static methods, do not write it
-    _DEBUG = False 
+    _BOARDSIZE = 9  # Used in static methods, do not write it
+    _DEBUG = False
 
     ##########################################################
     ##########################################################
@@ -56,26 +58,30 @@ class Board:
     def flatten(coord):
         ''' Static method that teturns the flatten (1D) coordinates given the 2D coordinates (x,y) on the board. It is a
         simple helper function to get y*_BOARDSIZE + x. 
-        
+
         Internally, all the moves are flatten. If you use legal_moves or weak_legal_moves, it will produce flatten
-        coordinates.''' 
-        if coord == (-1,-1): return -1
+        coordinates.'''
+        if coord == (-1, -1):
+            return -1
         return Board._BOARDSIZE * coord[1] + coord[0]
 
     @staticmethod
     def unflatten(fcoord):
-        if fcoord == -1: return (-1, -1)
+        if fcoord == -1:
+            return (-1, -1)
         d = divmod(fcoord, Board._BOARDSIZE)
         return d[1], d[0]
 
     @staticmethod
-    def name_to_coord(s): # Note that there is no "I"!
-        if s == 'PASS': return (-1,-1)
-        indexLetters = {'A':0, 'B':1, 'C':2, 'D':3, 'E':4, 'F':5, 'G':6, 'H':7, 'J':8}
+    def name_to_coord(s):  # Note that there is no "I"!
+        if s == 'PASS':
+            return (-1, -1)
+        indexLetters = {'A': 0, 'B': 1, 'C': 2, 'D': 3,
+                        'E': 4, 'F': 5, 'G': 6, 'H': 7, 'J': 8}
 
         col = indexLetters[s[0]]
         lin = int(s[1:]) - 1
-        return (col, lin )
+        return (col, lin)
 
     @staticmethod
     def name_to_flat(s):
@@ -83,13 +89,15 @@ class Board:
 
     @staticmethod
     def coord_to_name(coord):
-        if coord == (-1,-1): return 'PASS'
-        letterIndex = "ABCDEFGHJ" # Note that there is no "I"!
+        if coord == (-1, -1):
+            return 'PASS'
+        letterIndex = "ABCDEFGHJ"  # Note that there is no "I"!
         return letterIndex[coord[0]]+str(coord[1]+1)
 
     @staticmethod
     def flat_to_name(fcoord):
-        if fcoord == -1: return 'PASS'
+        if fcoord == -1:
+            return 'PASS'
         return Board.coord_to_name(Board.unflatten(fcoord))
 
     ##########################################################
@@ -114,48 +122,52 @@ class Board:
     ##########################################################
 
     def __init__(self):
-      ''' Main constructor. Instantiate all non static variables.'''
-      self._nbWHITE = 0
-      self._nbBLACK = 0
-      self._capturedWHITE = 0
-      self._capturedBLACK = 0
+        ''' Main constructor. Instantiate all non static variables.'''
+        self._nbWHITE = 0
+        self._nbBLACK = 0
+        self._capturedWHITE = 0
+        self._capturedBLACK = 0
 
-      self._nextPlayer = self._BLACK
-      self._board = np.zeros((Board._BOARDSIZE**2), dtype='int8')
+        self._nextPlayer = self._BLACK
+        self._board = np.zeros((Board._BOARDSIZE**2), dtype='int8')
 
-      self._lastPlayerHasPassed = False
-      self._gameOver = False
+        self._lastPlayerHasPassed = False
+        self._gameOver = False
 
-      self._stringUnionFind = np.full((Board._BOARDSIZE**2), -1, dtype='int8')
-      self._stringLiberties = np.full((Board._BOARDSIZE**2), -1, dtype='int8')
-      self._stringSizes = np.full((Board._BOARDSIZE**2), -1, dtype='int8')
+        self._stringUnionFind = np.full(
+            (Board._BOARDSIZE**2), -1, dtype='int8')
+        self._stringLiberties = np.full(
+            (Board._BOARDSIZE**2), -1, dtype='int8')
+        self._stringSizes = np.full((Board._BOARDSIZE**2), -1, dtype='int8')
 
-      self._empties = set(range(Board._BOARDSIZE **2))
+        self._empties = set(range(Board._BOARDSIZE ** 2))
 
-      # Zobrist values for the hashes. I use np.int64 to be machine independant
-      self._positionHashes = np.empty((Board._BOARDSIZE**2, 2), dtype='int64')
-      for x in range(Board._BOARDSIZE**2):
+        # Zobrist values for the hashes. I use np.int64 to be machine independant
+        self._positionHashes = np.empty(
+            (Board._BOARDSIZE**2, 2), dtype='int64')
+        for x in range(Board._BOARDSIZE**2):
             for c in range(2):
                 self._positionHashes[x][c] = getProperRandom()
-      self._currentHash = getProperRandom() 
-      self._passHashB = getProperRandom() 
-      self._passHashW = getProperRandom() 
+        self._currentHash = getProperRandom()
+        self._passHashB = getProperRandom()
+        self._passHashW = getProperRandom()
 
-      self._seenHashes = set()
+        self._seenHashes = set()
 
-      self._historyMoveNames = []
-      self._trailMoves = [] # data structure used to push/pop the moves
+        self._historyMoveNames = []
+        self._trailMoves = []  # data structure used to push/pop the moves
 
-      #Building fast structures for accessing neighborhood
-      self._neighbors = []
-      self._neighborsEntries = []
-      for nl in [self._get_neighbors(fcoord) for fcoord in range(Board._BOARDSIZE**2)] :
-          self._neighborsEntries.append(len(self._neighbors))
-          for n in nl:
-              self._neighbors.append(n)
-          self._neighbors.append(-1) # Sentinelle
-      self._neighborsEntries = np.array(self._neighborsEntries, dtype='int16')
-      self._neighbors = np.array(self._neighbors, dtype='int8')
+        # Building fast structures for accessing neighborhood
+        self._neighbors = []
+        self._neighborsEntries = []
+        for nl in [self._get_neighbors(fcoord) for fcoord in range(Board._BOARDSIZE**2)]:
+            self._neighborsEntries.append(len(self._neighbors))
+            for n in nl:
+                self._neighbors.append(n)
+            self._neighbors.append(-1)  # Sentinelle
+        self._neighborsEntries = np.array(
+            self._neighborsEntries, dtype='int16')
+        self._neighbors = np.array(self._neighbors, dtype='int8')
 
     ##########################################################
     ##########################################################
@@ -166,6 +178,7 @@ class Board:
     b[Board.flatten((x,y))]
 
     '''
+
     def __getitem__(self, key):
         ''' Helper access to the board, from flatten coordinates (in [0 .. Board.BOARDSIZE**2]). 
         Read Only array. If you want to add a stone on the board, you have to use
@@ -194,9 +207,9 @@ class Board:
         extremelly costly to check. Thus, you should use weak_legal_moves that does not check the superko and actually
         check the return value of the push() function that can return False if the move was illegal due to superKo.
         '''
-        moves = [m for m in self._empties if not self._is_suicide(m, self._nextPlayer) and 
-                not self._is_super_ko(m, self._nextPlayer)[0]]
-        moves.append(-1) # We can always ask to pass
+        moves = [m for m in self._empties if not self._is_suicide(m, self._nextPlayer) and
+                 not self._is_super_ko(m, self._nextPlayer)[0]]
+        moves.append(-1)  # We can always ask to pass
         return moves
 
     def weak_legal_moves(self):
@@ -206,8 +219,9 @@ class Board:
         Can generate illegal moves, but only due to Super KO position. In this generator, KO are not checked.
         If you use a move from this list, you have to check if push(m) was True or False and then immediatly pop 
         it if it is False (meaning the move was superKO.'''
-        moves = [m for m in self._empties if not self._is_suicide(m, self._nextPlayer)]
-        moves.append(-1) # We can always ask to pass
+        moves = [m for m in self._empties if not self._is_suicide(
+            m, self._nextPlayer)]
+        moves.append(-1)  # We can always ask to pass
         return moves
 
     def generate_legal_moves(self):
@@ -229,14 +243,15 @@ class Board:
         Checks the superKo, put the stone then capture the other color's stones.
         Returns True if the move was ok, and False otherwise. If False is returned, there was no side effect.
         In particular, it checks the superKo that may not have been checked before.
-        
+
         You can call it directly but the push/pop mechanism will not be able to undo it. Thus in general, 
         only push/pop are called and this method is never directly used.'''
-    
-        if self._gameOver: return
+
+        if self._gameOver:
+            return
         if fcoord != -1:  # pass otherwise
             alreadySeen, tmpHash = self._is_super_ko(fcoord, self._nextPlayer)
-            if alreadySeen: 
+            if alreadySeen:
                 self._historyMoveNames.append(self.flat_to_name(fcoord))
                 return False
             captured = self._put_stone(fcoord, self._nextPlayer)
@@ -262,7 +277,7 @@ class Board:
         self._historyMoveNames.append(self.flat_to_name(fcoord))
         self._nextPlayer = Board.flip(self._nextPlayer)
         return True
-    
+
     def next_player(self):
         return self._nextPlayer
 
@@ -395,8 +410,8 @@ class Board:
     def _getStringOfStone(self, fcoord):
         # In the union find structure, it is important to route all the nodes to the root
         # when querying the node. But in Python, using the successive array is really costly
-        # so this is not so clear that we need to use the successive collection of nodes
-        # Moreover, not rerouting the nodes may help for backtracking on the structure 
+        #  so this is not so clear that we need to use the successive collection of nodes
+        # Moreover, not rerouting the nodes may help for backtracking on the structure
         successives = []
         while self._stringUnionFind[fcoord] != -1:
             fcoord = self._stringUnionFind[fcoord]
@@ -426,7 +441,7 @@ class Board:
         i = self._neighborsEntries[fcoord]
         while self._neighbors[i] != -1:
             n = self._board[self._neighbors[i]]
-            if  n == Board._EMPTY:
+            if n == Board._EMPTY:
                 nbEmpty += 1
             elif n == color:
                 nbSameColor += 1
@@ -436,21 +451,21 @@ class Board:
         self._stringLiberties[currentString] = nbEmpty
         self._stringSizes[currentString] = 1
 
-        stringWithNoLiberties = [] # String to capture (if applies)
+        stringWithNoLiberties = []  # String to capture (if applies)
         i = self._neighborsEntries[fcoord]
         while self._neighbors[i] != -1:
             fn = self._neighbors[i]
-            if self._board[fn] == color: # We may have to merge the strings
+            if self._board[fn] == color:  # We may have to merge the strings
                 stringNumber = self._getStringOfStone(fn)
                 self._stringLiberties[stringNumber] -= 1
                 if currentString != stringNumber:
                     self._merge_strings(stringNumber, currentString)
                 currentString = stringNumber
-            elif self._board[fn] != Board._EMPTY: # Other color
+            elif self._board[fn] != Board._EMPTY:  # Other color
                 stringNumber = self._getStringOfStone(fn)
                 self._stringLiberties[stringNumber] -= 1
                 if self._stringLiberties[stringNumber] == 0:
-                    if stringNumber not in stringWithNoLiberties: # We may capture more than one string
+                    if stringNumber not in stringWithNoLiberties:  # We may capture more than one string
                         stringWithNoLiberties.append(stringNumber)
             i += 1
 
@@ -459,7 +474,7 @@ class Board:
     def reset(self):
         self.__init__()
 
-    def _isOnBoard(self,x,y):
+    def _isOnBoard(self, x, y):
         return x >= 0 and x < Board._BOARDSIZE and y >= 0 and y < Board._BOARDSIZE
 
     def _is_suicide(self, fcoord, color):
@@ -472,7 +487,7 @@ class Board:
             if self._board[fn] == Board._EMPTY:
                 return False
             string = self._getStringOfStone(fn)
-            if self._board[fn] == color: # check that we don't kill the whole zone
+            if self._board[fn] == color:  #  check that we don't kill the whole zone
                 if string not in libertiesFriends:
                     libertiesFriends[string] = self._stringLiberties[string] - 1
                 else:
@@ -488,9 +503,9 @@ class Board:
 
         for s in libertiesOpponents:
             if libertiesOpponents[s] == 0:
-                return False # At least one capture right after this move, it is legal
+                return False  # At least one capture right after this move, it is legal
 
-        if len(libertiesFriends) == 0: # No a single friend there...
+        if len(libertiesFriends) == 0:  # No a single friend there...
             return True
 
         # Now checks that when we connect all the friends, we don't create
@@ -499,7 +514,7 @@ class Board:
         for s in libertiesFriends:
             sumLibertiesFriends += libertiesFriends[s]
         if sumLibertiesFriends == 0:
-            return True # At least one friend zone will be captured right after this move, it is unlegal
+            return True  # At least one friend zone will be captured right after this move, it is unlegal
 
         return False
 
@@ -509,16 +524,17 @@ class Board:
     def _is_super_ko(self, fcoord, color):
         # Check if it is a complex move (if it takes at least a stone)
         tmpHash = self._currentHash ^ self._getPositionHash(fcoord, color)
-        assert self._currentHash == tmpHash ^ self._getPositionHash(fcoord, color)
+        assert self._currentHash == tmpHash ^ self._getPositionHash(
+            fcoord, color)
         i = self._neighborsEntries[fcoord]
         libertiesOpponents = {}
         opponent = Board.flip(color)
         while self._neighbors[i] != -1:
             fn = self._neighbors[i]
-            #print("superko looks at ", self.coord_to_name(fn), "for move", self.coord_to_name(fcoord))
+            # print("superko looks at ", self.coord_to_name(fn), "for move", self.coord_to_name(fcoord))
             if self._board[fn] == opponent:
                 s = self._getStringOfStone(fn)
-                #print("superko sees string", self.coord_to_name(s))
+                # print("superko sees string", self.coord_to_name(s))
                 if s not in libertiesOpponents:
                     libertiesOpponents[s] = self._stringLiberties[s] - 1
                 else:
@@ -527,12 +543,12 @@ class Board:
 
         for s in libertiesOpponents:
             if libertiesOpponents[s] == 0:
-                #print("superko computation for move ", self.coord_to_name(fcoord), ":")
+                # print("superko computation for move ", self.coord_to_name(fcoord), ":")
                 for fn in self._breadthSearchString(s):
-                    #print(self.coord_to_name(fn)+" ", end="")
+                    # print(self.coord_to_name(fn)+" ", end="")
                     assert self._board[fn] == opponent
                     tmpHash ^= self._getPositionHash(fn, opponent)
-                #print()
+                # print()
 
         if tmpHash in self._seenHashes:
             return True, tmpHash
@@ -556,7 +572,7 @@ class Board:
     def _count_areas(self):
         ''' Costly function that computes the number of empty positions that only reach respectively BLACK  and WHITE
         stones (the third values is the number of places touching both colours)'''
-        to_check = self._empties.copy() # We need to check all the empty positions
+        to_check = self._empties.copy()  # We need to check all the empty positions
         only_blacks = 0
         only_whites = 0
         others = 0
@@ -570,7 +586,7 @@ class Board:
             while frontier:
                 current = frontier.pop()
                 currentstring.append(current)
-                ssize += 1 # number of empty places in this loop
+                ssize += 1  # number of empty places in this loop
                 assert current not in to_check
                 i = self._neighborsEntries[current]
                 while self._neighbors[i] != -1:
@@ -585,7 +601,8 @@ class Board:
                         touched_whites += 1
             # here we have gathered all the informations about an empty area
             assert len(currentstring) == ssize
-            assert (self._nbBLACK == 0 and self._nbWHITE == 0) or touched_blacks > 0 or touched_whites > 0
+            assert (self._nbBLACK == 0 and self._nbWHITE ==
+                    0) or touched_blacks > 0 or touched_whites > 0
             if touched_blacks == 0 and touched_whites > 0:
                 only_whites += ssize
             elif touched_whites == 0 and touched_blacks > 0:
@@ -595,9 +612,9 @@ class Board:
         return (only_blacks, only_whites, others)
 
     def _piece2str(self, c):
-        if c==self._WHITE:
+        if c == self._WHITE:
             return 'O'
-        elif c==self._BLACK:
+        elif c == self._BLACK:
             return 'X'
         else:
             return '.'
@@ -605,25 +622,30 @@ class Board:
     def __str__(self):
         ''' WARNING: this print function does not reflect the classical coordinates. It represents the internal
         values in the board.'''
-        toreturn=""
-        for i,c in enumerate(self._board):
-            toreturn += self._piece2str(c) + " " # +'('+str(i)+":"+str(self._stringUnionFind[i])+","+str(self._stringLiberties[i])+') '
+        toreturn = ""
+        for i, c in enumerate(self._board):
+            # +'('+str(i)+":"+str(self._stringUnionFind[i])+","+str(self._stringLiberties[i])+') '
+            toreturn += self._piece2str(c) + " "
             if (i+1) % Board._BOARDSIZE == 0:
                 toreturn += "\n"
-        toreturn += "Next player: " + ("BLACK" if self._nextPlayer == self._BLACK else "WHITE") + "\n"
-        toreturn += str(self._nbBLACK) + " blacks and " + str(self._nbWHITE) + " whites on board\n"
+        toreturn += "Next player: " + \
+            ("BLACK" if self._nextPlayer == self._BLACK else "WHITE") + "\n"
+        toreturn += str(self._nbBLACK) + " blacks and " + \
+            str(self._nbWHITE) + " whites on board\n"
         return toreturn
 
     def pretty_print(self):
         return self.prettyPrint()
 
     def prettyPrint(self):
-        if Board._BOARDSIZE not in [5,7,9]:
+        if Board._BOARDSIZE not in [5, 7, 9]:
             print(self)
             return
         print()
-        print("To Move: ", "black" if self._nextPlayer == Board._BLACK else "white")
-        print("Last player has passed: ", "yes" if self._lastPlayerHasPassed else "no")
+        print("To Move: ", "black" if self._nextPlayer ==
+              Board._BLACK else "white")
+        print("Last player has passed: ",
+              "yes" if self._lastPlayerHasPassed else "no")
         print()
         print("     WHITE (O) has captured %d stones" % self._capturedBLACK)
         print("     BLACK (X) has captured %d stones" % self._capturedWHITE)
@@ -632,13 +654,13 @@ class Board:
         print("     BLACK (X) has %d stones" % self._nbBLACK)
         print()
         if Board._BOARDSIZE == 9:
-            specialPoints = [(2,2), (6,2), (4,4), (2,6), (6,6)]
+            specialPoints = [(2, 2), (6, 2), (4, 4), (2, 6), (6, 6)]
             headerline = "    A B C D E F G H J"
         elif Board._BOARDSIZE == 7:
-            specialPoints = [(2,2), (4,2), (3,3), (2,4), (4,4)]
+            specialPoints = [(2, 2), (4, 2), (3, 3), (2, 4), (4, 4)]
             headerline = "    A B C D E F G"
         else:
-            specialPoints = [(1,1), (3,1), (2,2), (1,3), (3,3)]
+            specialPoints = [(1, 1), (3, 1), (2, 2), (1, 3), (3, 3)]
             headerline = "    A B C D E"
         print(headerline)
         for l in range(Board._BOARDSIZE):
@@ -647,25 +669,25 @@ class Board:
             for c in range(Board._BOARDSIZE):
                 p = self._board[Board.flatten((c, Board._BOARDSIZE - l - 1))]
                 ch = '.'
-                if p==Board._WHITE:
+                if p == Board._WHITE:
                     ch = 'O'
-                elif p==Board._BLACK:
+                elif p == Board._BLACK:
                     ch = 'X'
-                elif (l,c) in specialPoints:
+                elif (l, c) in specialPoints:
                     ch = '+'
                 print(" " + ch, end="")
             print(" %d" % line)
         print(headerline)
         print("hash = ", self._currentHash)
 
-
     '''
     Internally, the board has a redundant information by keeping track of strings of stones.
     '''
+
     def _capture_string(self, fc):
-        # The Union and Find data structure can efficiently handle 
+        # The Union and Find data structure can efficiently handle
         # the string number of which the stone belongs to. However,
-        # to recover all the stones, given a string number, we must 
+        # to recover all the stones, given a string number, we must
         # search for them.
         string = self._breadthSearchString(fc)
         for s in string:
@@ -690,85 +712,93 @@ class Board:
             self._stringSizes[s] = -1
             self._stringLiberties[s] = -1
 
-
     ''' Internal wrapper to full_play_move. Simply translate named move into
     internal coordinates system'''
+
     def _play_namedMove(self, m):
         if m != "PASS":
             return self.play_move(Board.name_to_flat(m))
         else:
             return self.play_move(-1)
 
-    def _draw_cross(self, x,y,w):
-        toret = '<line x1="'+str(x-w)+'" y1="'+str(y)+'" x2="'+str(x+w)+'" y2="'+str(y)+'" stroke-width="3" stroke="black" />'
-        toret += '<line x1="'+str(x)+'" y1="'+str(y-w)+'" x2="'+str(x)+'" y2="'+str(y+w)+'" stroke-width="3" stroke="black" />'
+    def _draw_cross(self, x, y, w):
+        toret = '<line x1="'+str(x-w)+'" y1="'+str(y)+'" x2="'+str(x+w) + \
+            '" y2="'+str(y)+'" stroke-width="3" stroke="black" />'
+        toret += '<line x1="'+str(x)+'" y1="'+str(y-w)+'" x2="'+str(x) + \
+            '" y2="'+str(y+w)+'" stroke-width="3" stroke="black" />'
         return toret
 
     def svg(self):
-        ''' Can be used to get a SVG representation of the board, to be used in a jupyter notebook ''' 
-        text_width=20
-        nb_cells = self._BOARDSIZE 
+        ''' Can be used to get a SVG representation of the board, to be used in a jupyter notebook '''
+        text_width = 20
+        nb_cells = self._BOARDSIZE
         circle_width = 16
         border = 20
         width = 40
         wmax = str(width*(nb_cells-1) + border)
-        
-        board ='<svg height="'+str(text_width+border*2+(nb_cells-1)*width)+'" '+\
-        ' width="'+str(text_width+border*2+(nb_cells-1)*width)+'" > '
-        
+
+        board = '<svg height="'+str(text_width+border*2+(nb_cells-1)*width)+'" ' +\
+            ' width="'+str(text_width+border*2+(nb_cells-1)*width)+'" > '
+
         # The ABCD... line
-        board += '<svg height="'+str(text_width)+'" width="' + str(text_width + border*2+(nb_cells-1)*width)+'">'
+        board += '<svg height="' + \
+            str(text_width)+'" width="' + \
+            str(text_width + border*2+(nb_cells-1)*width)+'">'
         letters = "ABCDEFGHJ"
         il = 0
         for i in range(border+text_width-5, text_width-5+border+nb_cells*width, width):
-            board+= '<text x="'+str(i)+'" y="18" font-size="24" font-color="black">'+letters[il]+'</text>'
+            board += '<text x="' + \
+                str(i)+'" y="18" font-size="24" font-color="black">' + \
+                letters[il]+'</text>'
             il += 1
-            #board += '<rect x=0 y=0 width=20 height=10 stroke="black" />'
+            # board += '<rect x=0 y=0 width=20 height=10 stroke="black" />'
         board += '</svg>'
-        
+
         # The line numbers
         il = 0
-        board += '<svg width="'+str(text_width)+'" height="' + str(text_width + border*2+(nb_cells-1)*width)+'">'
+        board += '<svg width="' + \
+            str(text_width)+'" height="' + \
+            str(text_width + border*2+(nb_cells-1)*width)+'">'
         for i in range(border+text_width+7, text_width+7+border+nb_cells*width, width):
-            board+= '<text y="'+str(i)+'" x="0" font-size="24" font-color="black">'+str(9-il)+'</text>'
+            board += '<text y="' + \
+                str(i)+'" x="0" font-size="24" font-color="black">' + \
+                str(9-il)+'</text>'
             il += 1
-            #board += '<rect x=0 y=0 width=20 height=10 stroke="black" />'
+            # board += '<rect x=0 y=0 width=20 height=10 stroke="black" />'
         board += '</svg>'
-        
-        
+
         # The board by itself
         board += ' <svg x="'+str(text_width)+'" y="'+str(text_width)+'" height="' + \
-        str(text_width+width*(nb_cells-1) + 2*border) + '" width="' + \
-        str(text_width+width*(nb_cells-1) + 2*border) + '" > ' + \
-        '<rect x="0" y="0" width="'+str(width*(nb_cells-1)+2*border)+'" height="' + str(width*(nb_cells-1)+ 2*border) + '" fill="#B4927A" />\
-        <line x1="'+str(border)+'" y1="'+str(border)+'" x2="'+str(border)+'" y2="'+ wmax +'" stroke-width="4" stroke="black"/>\
+            str(text_width+width*(nb_cells-1) + 2*border) + '" width="' + \
+            str(text_width+width*(nb_cells-1) + 2*border) + '" > ' + \
+            '<rect x="0" y="0" width="'+str(width*(nb_cells-1)+2*border)+'" height="' + str(width*(nb_cells-1) + 2*border) + '" fill="#B4927A" />\
+        <line x1="'+str(border)+'" y1="'+str(border)+'" x2="'+str(border)+'" y2="' + wmax + '" stroke-width="4" stroke="black"/>\
         <line x1="' + wmax + '" y1="' + str(border) + '" x2="' + str(border) + '" y2="' + str(border) + '" stroke-width="4" stroke="black"/>\
         <line x1="' + wmax + '" y1="' + wmax + '" x2="' + wmax + '" y2="' + str(border) + '" stroke-width="4" stroke="black"/>\
         <line x1="' + str(border) + '" y1="' + wmax + '" x2="' + wmax + '" y2="' + wmax + '" stroke-width="4" stroke="black"/>'
-        
+
         board += self._draw_cross(border+4*width, border+4*width, width/3)
         board += self._draw_cross(border+2*width, border+2*width, width/3)
         board += self._draw_cross(border+6*width, border+6*width, width/3)
         board += self._draw_cross(border+2*width, border+6*width, width/3)
         board += self._draw_cross(border+6*width, border+2*width, width/3)
-    
+
         for i in range(border+width, width*(nb_cells-2)+2*border, width):
-            board += '<line x1="'+str(i)+'" y1="'+str(border)+'" x2="'+str(i)+'" y2="' + wmax + '" stroke-width="2" stroke="#444444"/>'
-            board += '<line y1="'+str(i)+'" x1="'+str(border)+'" y2="'+str(i)+'" x2="' + wmax + '" stroke-width="2" stroke="#444444"/>'
+            board += '<line x1="'+str(i)+'" y1="'+str(border)+'" x2="'+str(
+                i)+'" y2="' + wmax + '" stroke-width="2" stroke="#444444"/>'
+            board += '<line y1="'+str(i)+'" x1="'+str(border)+'" y2="'+str(
+                i)+'" x2="' + wmax + '" stroke-width="2" stroke="#444444"/>'
 
-            
-        # The stones    
+        # The stones
 
-        pieces = [(x,y,self._board[Board.flatten((x,y))]) for x in range(self._BOARDSIZE) for y in range(self._BOARDSIZE) if
-                self._board[Board.flatten((x,y))] != Board._EMPTY]
-        for (x,y,c) in pieces:
+        pieces = [(x, y, self._board[Board.flatten((x, y))]) for x in range(self._BOARDSIZE) for y in range(self._BOARDSIZE) if
+                  self._board[Board.flatten((x, y))] != Board._EMPTY]
+        for (x, y, c) in pieces:
             board += '<circle cx="'+str(border+width*x) + \
                 '" cy="'+str(border+width*(nb_cells-y-1))+'" r="' + str(circle_width) + \
                 '" stroke="#333333" stroke-width="3" fill="' + \
-                ("black" if c==1 else "white") +'" />'
+                ("black" if c == 1 else "white") + '" />'
 
         board += '</svg></svg>'
-        #'\    <text x="100" y="100" font-size="30" font-color="black"> Hello </text>\
+        # '\    <text x="100" y="100" font-size="30" font-color="black"> Hello </text>\
         return board
-
-
