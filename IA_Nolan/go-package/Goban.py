@@ -106,6 +106,7 @@ class Board:
 
     @staticmethod
     def flip(player):
+        assert (player == Board._BLACK or player == Board._WHITE)
         if player == Board._BLACK:
             return Board._WHITE
         return Board._BLACK

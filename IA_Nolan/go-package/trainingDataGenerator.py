@@ -26,7 +26,7 @@ def import_training_data(name):
     return data
 
 
-def run_round(game, b, players, nextplayer, nextplayercolor, training_board=False, training_move=''):
+def run_round(b, players, nextplayer, nextplayercolor, training_move=''):
     # legal moves are given as internal (flat) coordinates, not A1, A2, ...
     legals = b.legal_moves()
     # I have to use this wrapper if I want to print them
@@ -34,21 +34,14 @@ def run_round(game, b, players, nextplayer, nextplayercolor, training_board=Fals
     othercolor = Goban.Board.flip(nextplayercolor)
 
     # The move must be given by "A1", ... "J8" string coordinates (not as an internal move)
-    assert (not training_board or training_move != 0)
     if len(training_move) != 0:
         move = players[nextplayer].getPlayerMove(my_move=training_move)
     else:
         move = players[nextplayer].getPlayerMove(alea=True)
-
     b.push(Goban.Board.name_to_flat(move))
-    if training_board:
-        game["list_of_moves"].append(move)
-        if (nextplayercolor == Goban.Board._BLACK):
-            game["black_stones"].append(move)
-        else:
-            game["white_stones"].append(move)
+
     players[otherplayer].playOpponentMove(move)
-    return game, otherplayer, othercolor
+    return otherplayer, othercolor
 
 
 def initiate_training_data():
@@ -79,9 +72,14 @@ def initiate_training_data():
 
     nb_moves = game["depth"]
     while not board.is_game_over() and nb_moves != 0:
-        game, nextplayer, nextplayercolor = run_round(
-            game, board, players, nextplayer, nextplayercolor, True)
+        nextplayer, nextplayercolor = run_round(
+            board, players, nextplayer, nextplayercolor)
         nb_moves -= 1
+    game["black_stones"] = [(board.move_to_str(i)) for i in range(len(board.get_board()))
+                            if (board.get_board()[i] == Goban.Board._BLACK)]
+    game["white_stones"] = [(board.move_to_str(i)) for i in range(len(board.get_board()))
+                            if (board.get_board()[i] == Goban.Board._WHITE)]
+    game["list_of_moves"] = game["black_stones"] + game["white_stones"]
     game["depth"] -= nb_moves
     return game
 
@@ -102,13 +100,13 @@ def rollout_game(game):
     nextplayercolor = Goban.Board._BLACK
 
     for move in game["list_of_moves"]:
-        game, nextplayer, nextplayercolor = run_round(
-            game, board, players, nextplayer, nextplayercolor, training_move=move)
+        nextplayer, nextplayercolor = run_round(
+            board, players, nextplayer, nextplayercolor, training_move=move)
     depth = 0
     while not board.is_game_over():
         depth += 1
-        game, nextplayer, nextplayercolor = run_round(
-            game, board, players, nextplayer, nextplayercolor)
+        nextplayer, nextplayercolor = run_round(
+            board, players, nextplayer, nextplayercolor)
     if board.result() == "1-0":
         game["white_wins"] += 1
     elif board.result() == "0-1":
