@@ -38,6 +38,9 @@ def run_round(b, players, nextplayer, nextplayercolor, training_move=''):
         move = players[nextplayer].getPlayerMove(my_move=training_move)
     else:
         move = players[nextplayer].getPlayerMove(alea=True)
+
+    if not Goban.Board.name_to_flat(move) in legals:
+        return nextplayer, -1
     b.push(Goban.Board.name_to_flat(move))
 
     players[otherplayer].playOpponentMove(move)
@@ -103,13 +106,13 @@ def rollout_game(game):
         nextplayer, nextplayercolor = run_round(
             board, players, nextplayer, nextplayercolor, training_move=move)
     depth = 0
-    while not board.is_game_over():
+    while not board.is_game_over() and nextplayercolor != -1:
         depth += 1
         nextplayer, nextplayercolor = run_round(
             board, players, nextplayer, nextplayercolor)
-    if board.result() == "1-0":
+    if board.result() == "1-0" or (nextplayercolor == -1 and nextplayer == players[0]):
         game["white_wins"] += 1
-    elif board.result() == "0-1":
+    elif board.result() == "0-1" or (nextplayercolor == -1 and nextplayer == players[1]):
         game["black_wins"] += 1
     elif board.result() == "1/2-1/2":
         game["black_wins"] += 0.5
