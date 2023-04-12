@@ -4,7 +4,7 @@ import Goban
 from copy import deepcopy
 from numpy import random
 
-path = "./IA_Nolan/go-package/training_data"
+path = "./training_data"
 
 
 def export_training_data(name, data):
@@ -27,8 +27,7 @@ def import_training_data(name):
 
 
 def run_round(b, players, nextplayer, nextplayercolor, training_move=''):
-    # legal moves are given as internal (flat) coordinates, not A1, A2, ...
-    legals = b.legal_moves()
+    
     # I have to use this wrapper if I want to print them
     otherplayer = (nextplayer + 1) % 2
     othercolor = Goban.Board.flip(nextplayercolor)
@@ -36,9 +35,14 @@ def run_round(b, players, nextplayer, nextplayercolor, training_move=''):
     # The move must be given by "A1", ... "J8" string coordinates (not as an internal move)
     if len(training_move) != 0:
         move = players[nextplayer].getPlayerMove(my_move=training_move)
+        b.push(Goban.Board.name_to_flat(move))
+        players[otherplayer].playOpponentMove(move)
+        return otherplayer, othercolor
     else:
         move = players[nextplayer].getPlayerMove(alea=True)
 
+    # legal moves are given as internal (flat) coordinates, not A1, A2, ...
+    legals = b.legal_moves()
     if not Goban.Board.name_to_flat(move) in legals:
         return nextplayer, -1
     b.push(Goban.Board.name_to_flat(move))
@@ -91,10 +95,10 @@ def rollout_game(game):
     board = Goban.Board()
 
     players = []
-    player1 = gnugoPlayer.myPlayer(0)
+    player1 = gnugoPlayer.myPlayer(10)
     player1.newGame(Goban.Board._BLACK)
     players.append(player1)
-
+    
     player2 = gnugoPlayer.myPlayer(0)
     player2.newGame(Goban.Board._WHITE)
     players.append(player2)
@@ -120,6 +124,9 @@ def rollout_game(game):
     game["black_points"] += board.compute_score()[0]
     game["white_points"] += board.compute_score()[1]
     game["rollouts"] += 1
+
+    del player1
+    del player2
     return game
 
 

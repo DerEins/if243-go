@@ -1,6 +1,6 @@
 ''''''
 import Goban 
-import myPlayer
+import myPlayer2, randomPlayer
 import time
 from io import StringIO
 import sys
@@ -8,11 +8,11 @@ import sys
 b = Goban.Board()
 
 players = []
-player1 = myPlayer.myPlayer()
+player1 = myPlayer2.myPlayer()
 player1.newGame(Goban.Board._BLACK)
 players.append(player1)
 
-player2 = myPlayer.myPlayer()
+player2 = randomPlayer.myPlayer()
 player2.newGame(Goban.Board._WHITE)
 players.append(player2)
 

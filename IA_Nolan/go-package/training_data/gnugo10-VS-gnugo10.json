@@ -1,0 +1,6 @@
+[{"depth": 6, "list_of_moves": ["D3", "C5", "C6", "E3", "E5", "D6"], "black_stones": ["D3", "C5", "C6"], "white_stones": ["E3", "E5", "D6"], "rollouts": 100, "black_wins": 66, "black_points": 4253, "white_wins": 34, "white_points": 3760} ,
+{"depth": 2, "list_of_moves": ["E7", "E4"], "black_stones": ["E7"], "white_stones": ["E4"], "rollouts": 100, "black_wins": 64, "black_points": 4334, "white_wins": 36, "white_points": 3708} ,
+{"depth": 5, "list_of_moves": ["F3", "E5", "F5", "C4", "B6"], "black_stones": ["F3", "E5", "F5"], "white_stones": ["C4", "B6"], "rollouts": 100, "black_wins": 77, "black_points": 4454, "white_wins": 23, "white_points": 3646} ,
+{"depth": 2, "list_of_moves": ["F6", "C6"], "black_stones": ["F6"], "white_stones": ["C6"], "rollouts": 100, "black_wins": 61, "black_points": 4208, "white_wins": 39, "white_points": 3861} ,
+{"depth": 7, "list_of_moves": ["F4", "F6", "E7", "D8", "C2", "C4", "C7"], "black_stones": ["F4", "F6", "E7", "D8"], "white_stones": ["C2", "C4", "C7"], "rollouts": 100, "black_wins": 57, "black_points": 4091, "white_wins": 43, "white_points": 3922} ,
+{"depth": 1, "list_of_moves": ["E6"], "black_stones": ["E6"], "white_stones": [], "rollouts": 100, "black_wins": 72, "black_points": 4330, "white_wins": 28, "white_points": 3721}]

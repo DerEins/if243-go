@@ -61,3 +61,9 @@ class myPlayer(PlayerInterface):
             print("I won!!!")
         else:
             print("I lost :(!!")
+    
+    def __del__(self):
+        del self._gnugo
+        del self._board
+        del self._moves
+        del self

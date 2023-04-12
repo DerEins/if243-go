@@ -140,3 +140,7 @@ class GnuGo():
         (ok, legal) = self.query("all_legal black")
         assert ok == 'OK'
         # print("Legal moves: ", legal)
+
+    def __del__(self):
+        self._proc.kill()
+        del self
