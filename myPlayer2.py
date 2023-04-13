@@ -6,6 +6,7 @@ Right now, this class contains the copy of the randomPlayer. But you have to cha
 '''
 
 import time
+import json
 import hashlib
 import pickle
 import Goban
@@ -28,21 +29,26 @@ class myPlayer(PlayerInterface):
         self._mycolor = None
         self._model = load_model('model.keras')
         self._heuristic_cache = {}
+        self._depth = 0
 
     def getPlayerName(self):
-        return "Random Player"
+        return "AB+ML player"
 
     def getPlayerMove(self):
         if self._board.is_game_over():
             print("Referee told me to play but the game is over!")
             return "PASS"
-        move = self._getbestmove(2, float("-inf"), float("inf"), True)[1]
+        if self._depth < 10:
+            move = Goban.Board.name_to_flat(self._getOpeningMove())
+        else:
+            move = self._getbestmove(2, float("-inf"), float("inf"), True)[1]
         self._board.push(move)
 
         # New here: allows to consider internal representations of moves
         print("I am playing ", self._board.move_to_str(move))
         print("My current board :")
         self._board.prettyPrint()
+        self._depth += 1
         # move is an internal representation. To communicate with the interface I need to change if to a string
         return Goban.Board.flat_to_name(move)
 
@@ -50,6 +56,7 @@ class myPlayer(PlayerInterface):
         print("Opponent played ", move)  # New here
         #  the board needs an internal represetation to push the move.  Not a string
         self._board.push(Goban.Board.name_to_flat(move))
+        self._depth += 1
 
     def newGame(self, color):
         self._mycolor = color
@@ -61,6 +68,12 @@ class myPlayer(PlayerInterface):
         else:
             print("I lost :(!!")
     ################ Tree-search algorithm #########################
+
+    def _getOpeningMove(self):
+        path, name = "training_data", "openings"
+        with open(f'{path}/{name}.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return choice(data)["moves"][self._depth]
 
     def _getbestmove(self, depth, alpha, beta, maximizing_player):
         max_score = float('-inf')
