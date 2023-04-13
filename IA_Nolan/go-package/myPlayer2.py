@@ -32,7 +32,7 @@ class myPlayer(PlayerInterface):
         if self._board.is_game_over():
             print("Referee told me to play but the game is over!")
             return "PASS" 
-        move = AmiAlphaBeta(self._board, 2, self._mycolor-1, self.model)
+        move = AmiAlphaBeta(self._board, 2, self._mycolor, self.model) 
         self._board.push(move)
 
         # New here: allows to consider internal representations of moves
@@ -60,8 +60,7 @@ class myPlayer(PlayerInterface):
 
 def MaxValue(board, a, b, limit, color, model) : # Évaluation Ami
     if limit == 0 or board.is_game_over():
-        return model.predict(np.array([translate_board(board.get_board())]))[0][color] #return the answer 
-    for o in board.legal_moves() :
+        return model.predict(np.array([translate_board(board.get_board())]),verbose = 0)[0][color] #return the answer 
         board.push(o)
         a = max(a,MinValue(board, a, b, limit-1, color, model))
         board.pop()
@@ -70,7 +69,7 @@ def MaxValue(board, a, b, limit, color, model) : # Évaluation Ami
 
 def MinValue(board, a, b, limit, color, model) : # Évaluation Ennemi
     if limit == 0 or board.is_game_over():
-        return model.predict(np.array([translate_board(board.get_board())]))[0][(color+1)%2]
+        return model.predict(np.array([translate_board(board.get_board())]),verbose = 0)[0][color]
     for n in board.legal_moves() :
         board.push(n)
         b = min(b,MaxValue(board, a, b, limit-1, color, model))
@@ -79,8 +78,8 @@ def MinValue(board, a, b, limit, color, model) : # Évaluation Ennemi
     return b
 
 def AmiAlphaBeta(board, limit, color, model) :
-    a = -inf
-    b = +inf
+    a = -100000
+    b = 100000
     best = -inf
     legalMoves = board.legal_moves() 
     bestMove = legalMoves[0]
@@ -99,10 +98,29 @@ def AmiAlphaBeta(board, limit, color, model) :
 
 def translate_board(board):
     new_board = np.zeros((9,9,2))
-    for i in range(len(board)):
-        new_board[8-i//9][i%9][board[i]-1] = 1
+    for i in range(9):
+        for j in range(9):
+            if board[i*9+j] != 0:
+                new_board[8-i][j][board[i*9+j]-1] = 1
     return new_board
 
 
 
 
+
+
+def maximum(model, board, color) :
+    legalMoves = board.legal_moves() 
+    bestMove = legalMoves[0]
+    print(model.predict(np.array([translate_board(board.get_board())]),verbose = 0)[0][color],model.predict(np.array([translate_board(board.get_board())]),verbose = 0)[0][(1+color)%2])
+    board.push(bestMove)
+    maxi = model.predict(np.array([translate_board(board.get_board())]),verbose = 0)[0][color]
+    board.pop()
+    for move in legalMoves:
+        board.push(move)
+        score = model.predict(np.array([translate_board(board.get_board())]),verbose = 0)[0][color]
+        board.pop()
+        if (score >= maxi):
+            maxi = score
+            bestMove = move
+    return bestMove
