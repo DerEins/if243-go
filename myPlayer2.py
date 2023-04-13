@@ -99,7 +99,7 @@ class myPlayer(PlayerInterface):
         if depth == 0 or board.is_game_over():
             # Calcul de l'heuristique et stockage dans le cache
             h = self._model.predict(np.array([myPlayer.translate_board(board.get_board())]), verbose=0)[
-                0][self._mycolor%2]
+                0][self._mycolor % 2]
             self._heuristic_cache[key] = h
             return h, None
 
