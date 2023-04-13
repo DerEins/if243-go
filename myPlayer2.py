@@ -29,7 +29,9 @@ class myPlayer(PlayerInterface):
         self._mycolor = None
         self._model = load_model('model.keras')
         self._heuristic_cache = {}
+        self._openings = myPlayer.setOpeningData(self._mycolor)
         self._depth = 0
+        self._played_moves = []
 
     def getPlayerName(self):
         return "AB+ML player"
@@ -41,8 +43,9 @@ class myPlayer(PlayerInterface):
         if self._depth < 10:
             move = Goban.Board.name_to_flat(self._getOpeningMove())
         else:
-            move = self._getbestmove(2, float("-inf"), float("inf"), True)[1]
+            move = self._choosebestmove(self._board.legal_moves(), 2)[1]
         self._board.push(move)
+        self._played_moves.append(self._board.move_to_str(move))
 
         # New here: allows to consider internal representations of moves
         print("I am playing ", self._board.move_to_str(move))
@@ -56,6 +59,7 @@ class myPlayer(PlayerInterface):
         print("Opponent played ", move)  # New here
         #  the board needs an internal represetation to push the move.  Not a string
         self._board.push(Goban.Board.name_to_flat(move))
+        self._played_moves.append(move)
         self._depth += 1
 
     def newGame(self, color):
@@ -70,15 +74,21 @@ class myPlayer(PlayerInterface):
     ################ Tree-search algorithm #########################
 
     def _getOpeningMove(self):
-        path, name = "training_data", "openings"
-        with open(f'{path}/{name}.json', 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return choice(data)["moves"][self._depth]
+        possible_moves = []
+        for game in self._openings:
+            if all(x == y for x, y in zip(game["moves"][:self._depth], self._played_moves)) and game["moves"][self._depth] in self._board.legal_moves():
+                possible_moves.append(
+                    self._board.str_to_move(game["moves"][self._depth]))
+        if possible_moves == []:
+            return choice(self._openings)["moves"][self._depth]
+        return self._choosebestmove(possible_moves, 1)[1]
 
-    def _getbestmove(self, depth, alpha, beta, maximizing_player):
+    def _choosebestmove(self, moves, depth):
+        alpha = float("-inf")
+        beta = float("inf")
         max_score = float('-inf')
         best_move = None
-        for move in self._board.legal_moves():
+        for move in moves:
             self._board.push(move)
             score, _ = self._alphabeta(
                 self._board, depth - 1, alpha, beta, False)
@@ -140,7 +150,6 @@ class myPlayer(PlayerInterface):
 
 ####################################################################
 
-
     @staticmethod
     def hash_board(board):
         board_serialized = pickle.dumps(board)
@@ -155,3 +164,14 @@ class myPlayer(PlayerInterface):
                 if board[i*9+j] != 0:
                     new_board[8-i][j][board[i*9+j]-1] = 1
         return new_board
+
+    @staticmethod
+    def setOpeningData(color):
+        path, name = "training_data", "openings"
+        with open(f'{path}/{name}.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if color == Goban.Board._BLACK:
+            color_string = "B"
+        else:
+            color_string = "W"
+        return [d for d in data if d["winner"] == color_string]
