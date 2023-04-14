@@ -1,9 +1,7 @@
 import json
-import gnugoPlayer
-import Goban
 from copy import copy
 import numpy as np
-path = "../data"
+path = "./data"
 
 
 def export_training_data(name, data):

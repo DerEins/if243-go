@@ -171,7 +171,7 @@ class myPlayer(PlayerInterface):
 
     @staticmethod
     def setOpeningData(color):
-        path, name = "training_data", "openings"
+        path, name = "data", "openings"
         with open(f'{path}/{name}.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
         if color == Goban.Board._BLACK:

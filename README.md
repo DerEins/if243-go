@@ -49,4 +49,4 @@ Les évaluations de plateaux en début de jeu étant les plus longues (puisqu'il
 
 ## Génération de données d'entraînements
 
-Nous avons essayé de générer nos propres données d'entraînements de notre modèle, l'objectif étant d'avoir des données pour des affrontement de GnuGo niveau 10 contre lui-même. Malheureusement, nous n'avons pas réussi à dupliquer les joueurs (notamment les processus `gnugo`), opération nécessaire pour dériver un plateaux en 100 parties différentes. Un de nos essais sur GnuGo niveau 0 est disponible dans [`gnugo0-VS-gnugo0.json`](./data/gnugo0-VS-gnugo0.json)
+Nous avons essayé de générer nos propres données d'entraînements de notre modèle, l'objectif étant d'avoir des données pour des affrontement de GnuGo niveau 10 contre lui-même. Malheureusement, nous n'avons pas réussi à dupliquer les joueurs (notamment les processus `gnugo`), opération nécessaire pour dériver un plateaux en 100 parties différentes. Un de nos essais sur GnuGo niveau 0 est disponible dans [`gnugo0-VS-gnugo0.json`](./data/gnugo0-VS-gnugo0.json), fichier généré par [`trainingDataGenerator`](./utils/trainingDataGenerator.py).
