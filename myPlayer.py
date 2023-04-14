@@ -27,7 +27,7 @@ class myPlayer(PlayerInterface):
     def __init__(self):
         self._board = Goban.Board()
         self._mycolor = None
-        self._model = load_model('model.keras')
+        self._model = load_model('models/model.keras')
         self._heuristic_cache = {}
         self._openings = myPlayer.setOpeningData(self._mycolor)
         self._depth = 0

@@ -1,70 +1,52 @@
-## Goban.py
+# Auteurs
 
-Fichier contenant les règles du jeu de GO avec les fonctions et méthodes pour parcourir (relativement) efficacement
-l'arbre de jeu, à l'aide de legal_moves() et push()/pop() comme vu en cours.
+- Nolan Bizon : [nbizon@bordeaux-inp.fr](nbizon@bordeaux-inp.fr)
+- Mathieu Dupoux : [mdupoux@bordeaux-inp.fr](mdupoux@bordeaux-inp.fr)
 
-Ce fichier sera utilisé comme arbitre dans le tournoi. Vous avez maintenant les fonctions de score implantés dedans.
-Sauf problème, ce sera la methode result() qui donnera la vainqueur quand is_game_over() sera Vrai.
+# Modèle choisi
 
-Vous avez un décompte plus précis de la victoire dans final_go_score()
+## Heuristique
 
-Pour vous aider à parcourir le plateau de jeu, si b est un Board(), vous pouvez avoir accès à la couleur de la pierre
-posée en (x,y) en utilisant b[Board.flatten((x,y))]
+Notre modèle utilise une heuristique déterminée par le réseau de neurones [`model.keras`](./models/model.keras) qu'on a établi pour le TP d'IA. Celui-ci prend donc en entrée le plateau courant d'une partie et en évalue la probabilité de victoire de notre joueur.
 
-## GnuGo.py
+## Élagage
 
-Fichier contenant un ensemble de fonctions pour communiquer avec gnugo. Attention, il faut installer correctement (et
-à part gnugo sur votre machine). Je l'ai testé sur Linux uniquement mais cela doit fonctionner avec tous les autres
-systèmes (même s'ils sont moins bons :)).
+Nous avons choisi d'utiliser l'algorithme d'élagage alpha-bêta couplé à l'heuristique évaluée par notre réseau de neurones pour notre modèle. Celui-ci est optimisé grâce à une table de hachage des plateaux déjà évalués, permettant à notre joueur de s'économiser l'évaluation des plateaux déjà évalués.
 
-## starter-go.py
+## Ouverture
 
-Exemples de deux développements aléatoires (utilisant legal_moves et push/pop). Le premier utilise legal_moves et le
-second weak_legal_moves, qui ne garanti plus que le coup aléatoire soit vraiment légal (à cause des Ko).
+Les évaluations de plateaux en début de jeu étant les plus longues (puisqu'il y beaucoup de coups légaux à tester), nous avons voulu exploiter la banque d'ouverture de professionnels fournie ([`openings.json`](./data/openings.json)) avec le sujet. À noter qu'on a augmenté cette base en appliquant les symétries et rotations possibles d'un plateau (8 fois plus de données) grâce au script [`openingDataDuplicator.py`](./utils/openingDataDuplicator.py). Ainsi, pour les dix premiers coups joués lors d'une partie, on regarde si le début de partie correspond à une ou des ouvertures de la banque :
 
-La première chose à faire est probablement de
+- S'il y a plusieurs ouvertures possibles parmi cette banque, alors on choisi celle avec la meilleure évaluation par la même heuristique que notre alpha-bêta.
+- S'il n'y a aucune ouverture correspondante dans notre banque, alors on choisi aléatoirement un des coups de celle-ci de la profondeur correspondante à la partie en cours.
 
-## localGame.py
+# Structure de fichiers
 
-Permet de lancer un match de myPlayer contre lui même, en vérifiant les coups avec une instanciation de Goban.py comme
-arbitre. Vous ne devez pas modifier ce fichier pour qu'il fonctionne, sans quoi je risque d'avoir des problèmes pour
-faire entrer votre IA dans le tournoi.
+```
+├── data
+│   ├── gnugo0-VS-gnugo0.json
+│   ├── openings.json
+│   └── scores.json
+├── models
+│   └── model.keras
+├── utils
+│   ├── trainingDataGenerator.py
+│   └── openingDataDuplicator.py
+├── myPlayer.py
+├── gnugoPlayer.py
+├── randomPlayer.py
+├── GnuGo.py
+├── Goban.py
+├── helper.py
+├── localGame.py
+├── namedGame.py
+├── playerInterface.py
+├── visualGame.ipynb
+└── README.md
+```
 
-## playerInterface.py
+# Pistes d'amélioration
 
-Classe abstraite, décrite dans le sujet, permettant à votre joueur d'implanter correctement les fonctions pour être
-utilisé dans localGame et donc, dans le tournoi. Attention, il faut bien faire attention aux coups internes dans Goban
-(appelés "flat") et qui sont utilisés dans legal_moves/weak_legal_moves et push/pop des coups externes qui sont
-utilisés dans l'interface (les named moves). En interne, un coup est un indice dans un tableau 1 dimension
--1, 0..\_BOARDSIZE^2 et en externe (dans cette interface) les coups sont des chaines de caractères dans "A1", ..., "J9",
-"PASS". Il ne faut pas se mélanger les pinceaux.
+## Génération de données d'entraînements
 
-## myPlayer.py
-
-Fichier que vous devrez modifier pour y mettre votre IA pour le tournoi. En l'état actuel, il contient la copie du
-joueur randomPlayer.py
-
-## randomPlayer.py
-
-Un joueur aléatoire que vous pourrez conserver tel quel
-
-## gnugoPlayer.py
-
-Un joueur basé sur gnugo. Vous permet de vous mesurer à lui simplement.
-
-## namedGame.py
-
-Permet de lancer deux joueurs différents l'un contre l'autre.
-Il attent en argument les deux modules des deux joueurs à importer.
-
-# EXEMPLES DE LIGNES DE COMMANDES:
-
-python3 localGame.py
---> Va lancer un match myPlayer.py contre myPlayer.py
-
-python3 namedGame.py myPlayer randomPlayer
---> Va lancer un match entre votre joueur (NOIRS) et le randomPlayer
-(BLANC)
-
-python3 namedGame gnugoPlayer myPlayer
---> gnugo (level 0) contre votre joueur (très dur à battre)
+Nous avons essayé de générer nos propres données d'entraînements de notre modèle, l'objectif étant d'avoir des données pour des affrontement de GnuGo niveau 10 contre lui-même. Malheureusement, nous n'avons pas réussi à dupliquer les joueurs (notamment les processus `gnugo`), opération nécessaire pour dériver un plateaux en 100 parties différentes. Un de nos essais sur GnuGo niveau 0 est disponible dans [`gnugo0-VS-gnugo0.json`](./data/gnugo0-VS-gnugo0.json)

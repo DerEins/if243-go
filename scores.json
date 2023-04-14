@@ -1,8 +1,0 @@
-[{"black_player": "randomPlayer", "white_player": "myPlayer", "time": [0.1707897186279297, 899.4812614917755], "score": "W+81", "winner": 2} ,
-{"black_player": "randomPlayer", "white_player": "myPlayer", "time": [0.12630343437194824, 1209.1490449905396], "score": "W+1", "winner": 2} ,
-{"black_player": "myPlayer", "white_player": "randomPlayer", "time": [923.3779039382935, 0.16694116592407227], "score": "B+81", "winner": 1} ,
-{"black_player": "randomPlayer", "white_player": "myPlayer", "time": [0.023029088973999023, 200.13610291481018], "score": "0", "winner": null} ,
-{"black_player": "myPlayer", "white_player": "randomPlayer", "time": [673.2023921012878, 0.05512714385986328], "score": "B+1", "winner": 1} ,
-{"black_player": "randomPlayer", "white_player": "myPlayer", "time": [0.03382086753845215, 390.31636905670166], "score": "0", "winner": null} ,
-{"black_player": "myPlayer", "white_player": "randomPlayer", "time": [793.3919847011566, 0.10370564460754395], "score": "B+2", "winner": 1} ,
-{"black_player": "randomPlayer", "white_player": "myPlayer", "time": [0.1415853500366211, 988.8637008666992], "score": "W+81", "winner": 2}]

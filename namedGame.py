@@ -8,6 +8,7 @@ import sys
 import json
 
 path = "."
+score_path = f"{path}/data"
 
 
 def fileorpackage(name):
@@ -147,5 +148,5 @@ if __name__ == "__main__":
     players = ["randomPlayer", "myPlayer"]
     for i in range(int(hoursToPlay/gameTime)):
         result = run_game(players[1-i % 2], players[i % 2])
-        export_training_data("scores", result)
-    games_stats("scores")
+        export_training_data(score_path, result)
+    games_stats(score_path)
