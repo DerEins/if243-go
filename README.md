@@ -45,6 +45,12 @@ Les évaluations de plateaux en début de jeu étant les plus longues (puisqu'il
 └── README.md
 ```
 
+# Tests et résultats
+
+Nous avons légèrement modifié le programme [`namedGame.py`](./namedGame.py) afin qu'il puisse dérouler un nombre arbitraire de parties et sauvegarder leurs résultats dans [`scores.json`](./data/scores.json). Ceci nous permet de savoir si notre joueur réussi à gagner contre `randomPlayer.py` ou tout autre joueur.
+
+Nous en déduisons que notre joueur bat facilement (quasiment à tout les coups) le joueur aléatoire, mais il n'est malheureusement pas capable de battre GnuGo, même au niveau 0.
+
 # Pistes d'amélioration
 
 ## Génération de données d'entraînements
