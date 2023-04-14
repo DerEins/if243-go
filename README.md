@@ -3,6 +3,10 @@
 - Nolan Bizon : [nbizon@bordeaux-inp.fr](nbizon@bordeaux-inp.fr)
 - Mathieu Dupoux : [mdupoux@bordeaux-inp.fr](mdupoux@bordeaux-inp.fr)
 
+# Dépendances
+
+En plus des dépendances fournie par le sujet, notre joueur à besoin des module `keras` de Tensorflow, `numpy`, `hashlib` et `pickle` afin de charger son réseau de neurones `model.keras` lui permettant d'évaluer un plateau pour son alpha-bêta.
+
 # Modèle choisi
 
 ## Heuristique
